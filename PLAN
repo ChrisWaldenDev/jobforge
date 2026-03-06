@@ -1,0 +1,306 @@
+
+Async Job System Platform (Flagship Backend Project)
+
+
+
+0) Goal
+
+
+Build a backend platform that lets you submit work as jobs, processes them asynchronously via workers, and exposes status/results through an API.
+It supports multiple job types (CSV processing is the first).
+
+
+
+
+1) Architecture (2 processes, 1 repo)
+
+
+
+Processes
+
+
+1.	API Service (Spring Boot)
+o	Receives requests
+o	Validates input
+o	Creates jobs in storage
+o	Exposes endpoints to query jobs and fetch results
+2.
+3.	Worker Service (Spring Boot or plain JVM app)
+o	Polls/claims jobs
+o	Executes job handlers by type
+o	Updates job state + stores outputs
+o	Retries on failure
+4.
+
+
+
+Shared Infrastructure
+
+
+•	Database (Postgres recommended; H2 for dev ok)
+•	(Optional later) Redis for faster queueing / caching / rate limiting
+
+
+
+
+
+2) Core Domain Model
+
+
+
+Job fields (minimum)
+
+
+•	id (UUID)
+•	type (string/enum: CSV_PROCESS, EMAIL_SEND, REPORT_GENERATE, …)
+•	status (enum)
+o	QUEUED
+o	RUNNING
+o	SUCCEEDED
+o	FAILED
+o	CANCELLED (later)
+•
+•	attempt (int)
+•	maxAttempts (int)
+•	priority (int) (later)
+•	payload (JSON string) — job input
+•	result (JSON string or reference key) — job output
+•	error (string) — last error message/stack summary
+•	createdAt, updatedAt
+•	scheduledFor (timestamp) (later)
+•	lockedAt, lockedBy (worker id) — for claiming jobs
+
+
+
+
+
+3) Job Lifecycle Rules
+
+
+•	API creates a job with status QUEUED
+•	Worker claims a job:
+o	atomically sets RUNNING, sets lockedBy, lockedAt
+•
+•	Worker completes job:
+o	set SUCCEEDED and store result
+•
+•	Worker failure:
+o	increment attempt
+o	if attempt < maxAttempts: return to QUEUED with backoff delay
+o	else: set FAILED and store error
+•
+•	Job claiming must prevent double-processing (idempotency mindset)
+
+
+
+
+
+4) Minimum Feature List (MVP)
+
+
+
+A) Job API (core platform)
+
+
+•	POST /jobs → submit a job (generic)
+o	body: { "type": "...", "payload": {...}, "maxAttempts": 5 }
+o	returns: { "jobId": "...", "status": "QUEUED" }
+•
+•	GET /jobs/{id} → job status + metadata
+•	GET /jobs → list jobs with filters:
+o	status, type, createdAfter, createdBefore (basic)
+•
+•	POST /jobs/{id}/cancel (optional in MVP; easy later)
+
+
+
+B) Worker (core platform)
+
+
+•	Poll loop:
+o	every X ms, attempt to claim N jobs
+•
+•	Job handler dispatch:
+o	switch/map from job.type → handler
+•
+•	Reliable state updates:
+o	mark running, store heartbeat timestamp (later)
+•
+•	Retry + backoff:
+o	exponential backoff (simple: 2s, 5s, 15s, 30s, …)
+•
+•	Dead-letter behavior:
+o	once max attempts exceeded → FAILED
+•
+
+
+
+C) Observability (MVP)
+
+
+•	Structured logs:
+o	job id, job type, status transitions
+•
+•	Simple metrics endpoint (optional):
+o	counts by status/type
+•
+
+
+
+
+
+5) First Job Type: CSV Processing (First “Vehicle”)
+
+
+
+Purpose
+
+
+Prove the platform is useful by supporting a real long-running task.
+
+
+CSV Processing flow
+
+
+1.	Client uploads CSV
+2.	API stores file (or raw bytes) and creates job CSV_PROCESS
+3.	Worker processes:
+o	parses
+o	validates
+o	transforms
+o	outputs result file + summary
+4.
+
+
+
+CSV endpoints (recommended)
+
+
+•	POST /csv/jobs → upload CSV and create job
+o	returns { jobId }
+•
+•	GET /csv/jobs/{id}/result → download processed output (when succeeded)
+•	GET /csv/jobs/{id}/summary → stats (rows, errors, etc.)
+
+
+
+Output ideas
+
+
+•	Cleaned CSV
+•	Validation report JSON
+•	Error CSV (rows that failed)
+
+
+
+
+
+6) Storage Design
+
+
+
+Tables (minimum)
+
+
+jobs
+
+•	columns matching the core job fields above
+
+
+job_artifacts (optional but clean)
+
+•	id, jobId, kind (INPUT, OUTPUT, ERROR_REPORT)
+•	storageKey or blob (choose one)
+•	contentType, createdAt
+
+
+
+Artifact storage options
+
+
+•	MVP: store small files in DB as BYTEA / blob
+•	Better: store files on disk (local dev) and store paths in DB
+•	Later: S3/minio
+
+
+
+
+
+7) Safety + Correctness Requirements
+
+
+•	Atomic claiming (no two workers run the same job)
+•	Idempotency mindset
+o	each handler should tolerate re-run (or detect already-done)
+•
+•	Time limits (later)
+o	if job runs too long → fail or mark stuck
+•
+•	Poison jobs
+o	always failing jobs end in FAILED with error saved
+•
+
+
+
+
+
+8) Stretch Features (Add after MVP)
+
+
+
+Platform features
+
+
+•	Scheduled jobs: scheduledFor + worker only claims due jobs
+•	Priority queue: higher priority jobs claimed first
+•	Concurrency limits per type (e.g., only 2 CSV jobs at a time)
+•	Job timeouts + heartbeat + stuck-job reaper
+•	Multi-worker support with unique workerId
+•	Rate limiting for submission (Redis later)
+
+
+
+Job types you can add later (easy to extend)
+
+
+•	EMAIL_SEND
+•	DISCORD_WEBHOOK_POST
+•	REPORT_GENERATE
+•	IMAGE_RESIZE
+•	DATA_IMPORT
+•	WEB_SCRAPE
+•	NOTIFICATION_SCHEDULE
+
+
+
+
+
+9) “Definition of Done” Checklist (for your resume)
+
+
+You are “done” when:
+
+•	You can submit a job and get a job id back
+•	Worker reliably processes jobs and updates statuses
+•	Retries + maxAttempts work correctly
+•	CSV job type works end-to-end (upload → process → download)
+•	Logs clearly show job lifecycle
+•	README explains architecture + tradeoffs + how to run both processes
+
+
+
+
+
+10) Repo Layout (Java/Kotlin-friendly)
+
+
+•	job-platform-api/
+o	controllers + validation
+•
+•	job-platform-worker/
+o	poller + handlers
+•
+•	job-platform-core/
+o	shared models, enums, DB access interfaces
+•
+

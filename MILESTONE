@@ -1,0 +1,193 @@
+
+Milestones (M1 → M8) with exact “what’s next”
+
+
+These are ordered so you always know the next build step. Don’t skip ahead.
+
+
+M1 — Skeleton + DB connectivity
+
+
+Outcome: repo builds, both apps start, DB reachable.
+
+•	Create 3 modules: core, api, worker
+•	Choose Postgres (recommended) + Docker Compose (optional)
+•	Add a simple health endpoint in API: GET /health
+•	Verify both apps can connect to DB
+
+
+You’re done when
+
+•	API starts + /health returns OK
+•	Worker starts (even if it does nothing yet)
+
+
+
+
+
+M2 — Core domain + Job table
+
+
+Outcome: your platform has a real Job model + persistence shape.
+
+•	In core.domain: create Job, JobStatus, JobType
+•	Define minimum fields: id, type, status, payload, result, error, attempt, maxAttempts, createdAt, updatedAt, lockedBy, lockedAt
+•	Create DB schema migration (Flyway/Liquibase) for jobs table
+•	In core.repository: JobRepository interface (only method signatures, no Spring here)
+
+
+You’re done when
+
+•	DB has jobs table
+•	You can create a Job object in code and it compiles in all modules
+
+
+
+
+
+M3 — API can submit & query jobs (no worker yet)
+
+
+Outcome: you can create jobs and retrieve them through REST.
+
+•	In core.dto: CreateJobRequest, CreateJobResponse, JobView
+•	In api.persistence: implement JobRepository (JPA/JdbcTemplate)
+•	In api.service: JobSubmissionService.createJob(...)
+•	In api.controller: POST /jobs, GET /jobs/{id}, GET /jobs?status=&type=
+
+
+You’re done when
+
+•	You can POST /jobs and get a jobId
+•	GET /jobs/{id} returns QUEUED job data
+
+
+
+
+
+M4 — Worker can claim a job (the hard “real systems” part)
+
+
+Outcome: you’ve solved “no double processing.”
+
+•	In worker.claiming: JobClaimer.claimNextJobs(workerId, limit)
+o	Atomically transition QUEUED → RUNNING
+o	Set lockedBy, lockedAt
+•
+•	In worker.polling: JobPoller loop calls claimer every X ms
+•	Add logs for lifecycle transitions
+
+
+You’re done when
+
+•	Worker picks up a queued job and marks it RUNNING
+•	If you run two workers, the same job is not claimed twice
+
+
+
+
+
+M5 — Dispatch + handler interface
+
+
+Outcome: worker can execute “job types” cleanly.
+
+•	In worker.handler: JobHandler interface:
+o	JobType supports()
+o	JobResult handle(Job job) (your design)
+•
+•	In worker.dispatch: JobDispatcher routes job → handler by type
+•	Add a “demo” handler (no CSV yet) like NOOP or ECHO_PAYLOAD
+•	Worker sets job to SUCCEEDED and stores result
+
+
+You’re done when
+
+•	A queued ECHO_PAYLOAD job ends up SUCCEEDED with result saved
+
+
+
+
+
+M6 — Retries + backoff + failure recording
+
+
+Outcome: reliability features that interviewers care about.
+
+•	On handler exception:
+o	increment attempt
+o	if attempt < maxAttempts → back to QUEUED with availableAt (add column) OR a simple nextRunAt
+o	else → FAILED and store error
+•
+•	Implement exponential backoff (simple formula is fine)
+•	Update claiming to only claim jobs whose nextRunAt <= now
+
+
+You’re done when
+
+•	You can submit a job designed to fail and watch retries happen
+•	After max attempts it becomes FAILED
+
+
+
+
+
+M7 — First real “vehicle”: CSV job type (end-to-end)
+
+
+Outcome: platform becomes “useful”, not just infra.
+
+•	In API:
+o	POST /csv/jobs (upload file, store it, create CSV_PROCESS job)
+•
+•	In worker:
+o	CsvProcessJobHandler parses + validates + produces output + summary
+•
+•	Add endpoints:
+o	GET /csv/jobs/{id}/summary
+o	GET /csv/jobs/{id}/result (download)
+•
+
+
+You’re done when
+
+•	Upload CSV → job runs → you can download output and see a summary
+
+
+
+
+
+M8 — “Resume polish” + production vibes
+
+
+Outcome: this looks like a real system.
+
+•	Add Swagger/OpenAPI (optional)
+•	Add structured logging (jobId, jobType)
+•	Add metrics counts (optional)
+•	Add Docker compose: Postgres + API + Worker
+•	Write README:
+o	architecture diagram
+o	how to run
+o	tradeoffs (DB queue vs Redis later)
+o	failure/retry behavior
+•
+
+
+You’re done when
+
+•	Someone can clone and run it in <10 minutes
+•	README explains it clearly
+
+
+
+
+
+“After M8” expansion path (how you add more services later)
+
+
+You have two clean options:
+
+1.	Add more job types (recommended first): just new handlers in worker.handler + optional endpoints in api.controller
+2.	Add separate microservices that submit jobs to the same DB (later): e.g., a “notifications service” that only calls POST /jobs and reads status
+
