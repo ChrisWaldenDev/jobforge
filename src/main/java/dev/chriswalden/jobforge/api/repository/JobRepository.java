@@ -30,6 +30,7 @@ public interface JobRepository extends JpaRepository<Job, UUID> {
     from Job j
     where j.status = :status
         and (j.nextRunAt is null or j.nextRunAt <= :now)
+        and (j.scheduledFor is null or j.scheduledFor <= :now)
     order by j.createdAt asc
 """)
     List<Job> findClaimCandidates(

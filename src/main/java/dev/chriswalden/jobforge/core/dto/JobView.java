@@ -18,6 +18,7 @@ public class JobView {
     private int maxAttempts;
     private Instant createdAt;
     private Instant updatedAt;
+    private Instant scheduledFor;
     private String result;
     private String error;
 }
