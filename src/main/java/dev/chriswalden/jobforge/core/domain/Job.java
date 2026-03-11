@@ -47,6 +47,7 @@ public class Job {
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
     private Instant updatedAt;
+    private Instant scheduledFor;
 
     private Instant lockedAt;
     private String lockedBy;
