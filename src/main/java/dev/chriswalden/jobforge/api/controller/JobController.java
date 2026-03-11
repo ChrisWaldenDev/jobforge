@@ -7,6 +7,7 @@ import dev.chriswalden.jobforge.core.dto.CreateJobRequest;
 import dev.chriswalden.jobforge.core.dto.CreateJobResponse;
 import dev.chriswalden.jobforge.core.dto.JobView;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,6 +23,7 @@ public class JobController {
     }
 
     @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
     public CreateJobResponse postJob(@Valid @RequestBody CreateJobRequest job) {
         return jobService.submit(job);
     }
