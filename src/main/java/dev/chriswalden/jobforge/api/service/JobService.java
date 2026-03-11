@@ -15,6 +15,7 @@ import tools.jackson.databind.ObjectMapper;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.UUID;
 
 @Service
@@ -49,7 +50,7 @@ public class JobService {
 
     public JobView getJob(String id) {
         Job job = jobRepository.findById(UUID.fromString(id))
-                .orElseThrow(() -> new NullPointerException("Job not found"));
+                .orElseThrow(() -> new NoSuchElementException("Job not found"));
         return JobMapper.toJobView(job);
     }
 
