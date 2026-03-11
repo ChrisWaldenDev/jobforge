@@ -9,6 +9,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.Instant;
+
 @Getter
 @Setter
 @AllArgsConstructor
@@ -18,6 +20,8 @@ public class CreateJobRequest {
     @NotNull
     private JobType type;
     private Object payload;
+
+    private Instant scheduledFor;
 
     @Min(1)
     @Max(20)

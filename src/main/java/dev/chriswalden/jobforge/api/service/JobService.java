@@ -37,6 +37,8 @@ public class JobService {
         job.setStatus(JobStatus.QUEUED);
         job.setPayload(payloadJson);
 
+        if (req.getScheduledFor() != null) {job.setScheduledFor(req.getScheduledFor());}
+
         job.setAttempts(0);
         job.setMaxAttempts(req.getMaxAttempts());
 

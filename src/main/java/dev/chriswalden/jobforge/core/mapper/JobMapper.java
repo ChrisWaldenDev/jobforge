@@ -14,6 +14,7 @@ public class JobMapper {
         jobView.setMaxAttempts(job.getMaxAttempts());
         jobView.setCreatedAt(job.getCreatedAt());
         jobView.setUpdatedAt(job.getUpdatedAt());
+        jobView.setScheduledFor(job.getScheduledFor());
         jobView.setResult(job.getResult());
         jobView.setError(job.getError());
 
