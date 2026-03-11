@@ -39,17 +39,22 @@ public class Job {
     @Column(nullable = false)
     private int attempts = 0;
 
-    @Column(nullable = false)
+    @Column(nullable = false, name = "max_attempts")
     private int maxAttempts = 3;
 
+    @Column(name = "next_run_at")
     private Instant nextRunAt;
 
-    @Column(nullable = false, updatable = false)
+    @Column(nullable = false, updatable = false, name = "created_at")
     private Instant createdAt;
+    @Column(name = "updated_at")
     private Instant updatedAt;
+    @Column(name = "scheduled_for")
     private Instant scheduledFor;
 
+    @Column(name = "locked_at")
     private Instant lockedAt;
+    @Column(name = "locked_by")
     private String lockedBy;
 
     @PrePersist
