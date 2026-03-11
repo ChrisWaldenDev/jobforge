@@ -76,6 +76,16 @@ public class JobService {
         return jobViews;
     }
 
+    public void cancelJob(String id) {
+        Job job = jobRepository.findById(UUID.fromString(id))
+                .orElseThrow(() -> new NoSuchElementException("Job not found"));
+
+        if (job.getStatus() != JobStatus.QUEUED) {
+            throw new IllegalStateException("Only QUEUED jobs can be cancelled");
+        }
+        jobRepository.removeJobById(job.getId());
+    }
+
     private String toJson(Object payload) {
         if (payload == null) return null;
         try {

@@ -38,4 +38,6 @@ public interface JobRepository extends JpaRepository<Job, UUID> {
             @Param("now") Instant now,
             Pageable pageable
     );
+
+    void removeJobById(UUID id);
 }

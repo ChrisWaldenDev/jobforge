@@ -41,4 +41,10 @@ public class JobController {
         JobType type = (jobType != null) ? JobType.valueOf(jobType.toUpperCase()) : null;
         return jobService.getJobsByStatusAndType(status, type);
     }
+
+    @PostMapping("/{id}/cancel")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void cancelJob(@PathVariable String id) {
+        jobService.cancelJob(id);
+    }
 }
