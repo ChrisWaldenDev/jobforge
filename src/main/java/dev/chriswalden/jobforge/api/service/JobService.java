@@ -55,7 +55,18 @@ public class JobService {
 
     public List<JobView> getJobsByStatusAndType(JobStatus status, JobType type) {
         ArrayList<JobView> jobViews = new ArrayList<>();
-        List<Job> jobs = jobRepository.findByStatusAndTypeOrderByCreatedAtDesc(status, type, Pageable.unpaged());
+        List<Job> jobs;
+
+        if (status == null && type == null) {
+            jobs = jobRepository.findAll();
+        } else if (status == null) {
+            jobs = jobRepository.findAllByType(type);
+        } else if (type == null) {
+            jobs = jobRepository.findAllByStatus(status);
+        } else {
+            jobs = jobRepository.findByStatusAndTypeOrderByCreatedAtDesc(status, type, Pageable.unpaged());
+        }
+
         for (Job job : jobs) {
             jobViews.add(JobMapper.toJobView(job));
         }

@@ -34,23 +34,9 @@ public class JobController {
 
     @GetMapping
     @ResponseBody
-    public List<JobView> getJobsByStatusAndType(@RequestParam(name = "status") String jobStatus, @RequestParam(name = "type") String jobType) {
-        JobStatus status;
-        JobType type;
-        status = switch (jobStatus.toLowerCase()) {
-            case "queued" -> JobStatus.QUEUED;
-            case "running" -> JobStatus.RUNNING;
-            case "completed" -> JobStatus.COMPLETED;
-            case "failed" -> JobStatus.FAILED;
-            case "cancelled" -> JobStatus.CANCELLED;
-            default -> null;
-        };
-
-        type = switch (jobType.toLowerCase()) {
-            case "csv_process" -> JobType.CSV_PROCESS;
-            case "noop" -> JobType.NOOP;
-            default -> null;
-        };
+    public List<JobView> getJobsByStatusAndType(@RequestParam(name = "status", required = false) String jobStatus, @RequestParam(name = "type", required = false) String jobType) {
+        JobStatus status = (jobStatus != null) ? JobStatus.valueOf(jobStatus.toUpperCase()) : null;
+        JobType type = (jobType != null) ? JobType.valueOf(jobType.toUpperCase()) : null;
         return jobService.getJobsByStatusAndType(status, type);
     }
 }
