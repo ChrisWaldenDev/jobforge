@@ -4,8 +4,11 @@ import dev.chriswalden.jobforge.api.service.CsvService;
 import dev.chriswalden.jobforge.core.dto.CreateJobResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/csv")
@@ -29,5 +32,13 @@ public class CsvController {
             @RequestParam(value = "maxAttempts", required = false) Integer maxAttempts
             ) {
         return csvService.submit(file, delimiter, hasHeader, maxAttempts);
+    }
+
+    @GetMapping(value = "/jobs/{id}/result", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<String> getCsvResult(@PathVariable UUID id) {
+        String result = csvService.getResult(id);
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(result);
     }
 }
