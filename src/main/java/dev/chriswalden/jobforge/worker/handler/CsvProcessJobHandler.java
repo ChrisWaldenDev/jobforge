@@ -47,6 +47,7 @@ public class CsvProcessJobHandler implements JobHandler {
         int rowsFailed = 0;
         int columns = -1;
         List<String> headerCols = new ArrayList<>();
+        List<Map<String, String>> rows = new ArrayList<>();
 
         try (BufferedReader br = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(csv.getData()), StandardCharsets.UTF_8))) {
             String line;
@@ -65,6 +66,11 @@ public class CsvProcessJobHandler implements JobHandler {
                         headerCols.addAll(Arrays.asList(parts));
                         continue;
                     }
+
+                    // No header: generate positional keys column_0, column_1, ...
+                    for (int i = 0; i < columns; i++) {
+                        headerCols.add("column_" + i);
+                    }
                 }
 
                 if (parts.length != columns) {
@@ -72,6 +78,11 @@ public class CsvProcessJobHandler implements JobHandler {
                     continue;
                 }
 
+                Map<String, String> row = new LinkedHashMap<>();
+                for (int i = 0; i < columns; i++) {
+                    row.put(headerCols.get(i), parts[i]);
+                }
+                rows.add(row);
                 rowsProcessed++;
             }
         }
@@ -85,6 +96,7 @@ public class CsvProcessJobHandler implements JobHandler {
         result.put("hasHeader", hasHeader);
         result.put("header", headerCols);
         result.put("processedAt", Instant.now().toString());
+        result.put("rows", rows);
 
         return mapper.writeValueAsString(result);
     }

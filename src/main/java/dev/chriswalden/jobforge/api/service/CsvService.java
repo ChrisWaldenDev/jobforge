@@ -14,6 +14,8 @@ import tools.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.UUID;
 
 @Service
 public class CsvService {
@@ -75,6 +77,21 @@ public class CsvService {
         resp.setJobId(savedJob.getId());
         resp.setStatus(savedJob.getStatus());
         return resp;
+    }
+
+    public String getResult(UUID jobId) {
+        Job job = jobRepository.findById(jobId)
+                .orElseThrow(() -> new NoSuchElementException("Job not found: " + jobId));
+
+        if (job.getType() != JobType.CSV_PROCESS) {
+            throw new IllegalArgumentException("Job " + jobId + " is not a CSV processing job");
+        }
+
+        if (job.getStatus() != JobStatus.COMPLETED) {
+            throw new IllegalStateException("Job " + jobId + " is not completed (status: " + job.getStatus() + ")");
+        }
+
+        return job.getResult();
     }
 
     private String toJson(Object obj) {
