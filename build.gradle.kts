@@ -5,8 +5,8 @@ plugins {
 }
 
 group = "dev.chriswalden"
-version = "0.0.1-SNAPSHOT"
-description = "Demo project for Spring Boot"
+version = "0.2.0"
+description = "A distributed job processing service built with Spring Boot, using RabbitMQ for asynchronous task execution and PostgreSQL for persistence. "
 
 java {
 	toolchain {
@@ -51,6 +51,10 @@ dependencies {
 	testImplementation("org.testcontainers:junit-jupiter")
 	testImplementation("org.awaitility:awaitility")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+}
+
+tasks.bootJar {
+	archiveFileName.set("app.jar")
 }
 
 tasks.withType<Test> {
