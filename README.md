@@ -90,6 +90,14 @@ APP_HOST_PORT=8081
 
 ## API Documentation
 
+### Interactive Docs (Swagger UI)
+
+Swagger UI is available at `<host>/swagger-ui/index.html` when the app is running (e.g. `http://localhost:8080/swagger-ui/index.html` locally, or your VPS address if deployed).
+
+The raw OpenAPI spec is served at `<host>/v3/api-docs`.
+
+---
+
 ### Jobs
 
 #### Create a Job
