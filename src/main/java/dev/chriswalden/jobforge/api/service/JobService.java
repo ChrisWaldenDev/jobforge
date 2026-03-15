@@ -9,6 +9,8 @@ import dev.chriswalden.jobforge.core.dto.JobView;
 import dev.chriswalden.jobforge.core.mapper.JobMapper;
 import dev.chriswalden.jobforge.api.repository.JobRepository;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.ObjectMapper;
@@ -20,6 +22,8 @@ import java.util.UUID;
 
 @Service
 public class JobService {
+
+    private static final Logger log = LoggerFactory.getLogger(JobService.class);
 
     private final JobRepository jobRepository;
     private final ObjectMapper objectMapper;
@@ -43,6 +47,7 @@ public class JobService {
         job.setMaxAttempts(req.getMaxAttempts());
 
         Job saved = jobRepository.save(job);
+        log.info("[job={}] Created job type={}", saved.getId(), saved.getType());
 
         CreateJobResponse resp = new CreateJobResponse();
         resp.setJobId(saved.getId());
