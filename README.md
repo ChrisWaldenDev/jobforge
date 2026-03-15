@@ -1,6 +1,6 @@
 # Job-Forge
 
-A Spring Boot job processing service that handles asynchronous job execution via RabbitMQ, with support for CSV file processing and configurable retry logic.
+A Spring Boot job processing service that handles asynchronous job execution via RabbitMQ, with support for CSV file processing and more to come in the future.
 
 ## Architecture
 
