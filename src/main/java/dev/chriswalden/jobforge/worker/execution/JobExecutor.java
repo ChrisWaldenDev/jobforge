@@ -3,6 +3,7 @@ package dev.chriswalden.jobforge.worker.execution;
 import dev.chriswalden.jobforge.core.domain.Job;
 import dev.chriswalden.jobforge.core.domain.JobStatus;
 import dev.chriswalden.jobforge.api.repository.JobRepository;
+import dev.chriswalden.jobforge.api.messaging.JobPublisher;
 import dev.chriswalden.jobforge.worker.dispatch.JobDispatcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,15 +20,19 @@ public class JobExecutor {
 
     private final JobRepository jobRepository;
     private final JobDispatcher jobDispatcher;
+    private final JobPublisher jobPublisher;
 
-    public JobExecutor(JobRepository jobRepository, JobDispatcher jobDispatcher) {
+    public JobExecutor(JobRepository jobRepository, JobDispatcher jobDispatcher, JobPublisher jobPublisher) {
         this.jobRepository = jobRepository;
         this.jobDispatcher = jobDispatcher;
+        this.jobPublisher = jobPublisher;
     }
 
     @Transactional
     public void execute(Job job) {
         log.info("[job={}] RUNNING type={}", job.getId(), job.getType());
+        job.setStatus(JobStatus.RUNNING);
+        jobRepository.save(job);
         try {
             String result = jobDispatcher.dispatch(job);
 
@@ -57,7 +62,10 @@ public class JobExecutor {
 
             job.setLockedBy(null);
             job.setLockedAt(null);
+            jobRepository.save(job);
+            jobPublisher.publish(job);
             log.warn("[job={}] RETRY attempt={}/{} type={} error={}", job.getId(), nextAttempt, job.getMaxAttempts(), job.getType(), job.getError());
+            return;
         } else {
             job.setStatus(JobStatus.FAILED);
             job.setLockedBy(null);
