@@ -4,6 +4,7 @@ import dev.chriswalden.jobforge.core.domain.CsvFile;
 import dev.chriswalden.jobforge.core.domain.Job;
 import dev.chriswalden.jobforge.core.domain.JobStatus;
 import dev.chriswalden.jobforge.core.domain.JobType;
+import dev.chriswalden.jobforge.core.dto.CreateJobRequest;
 import dev.chriswalden.jobforge.core.dto.CreateJobResponse;
 import dev.chriswalden.jobforge.core.dto.CsvJobSummaryView;
 import dev.chriswalden.jobforge.api.repository.CsvFileRepository;
@@ -27,11 +28,13 @@ public class CsvService {
 
     private final CsvFileRepository csvFileRepository;
     private final JobRepository jobRepository;
+    private final JobService jobService;
     private final ObjectMapper objectMapper;
 
-    public CsvService(final CsvFileRepository csvFileRepository, JobRepository jobRepository, ObjectMapper objectMapper) {
+    public CsvService(CsvFileRepository csvFileRepository, JobRepository jobRepository, JobService jobService, ObjectMapper objectMapper) {
         this.csvFileRepository = csvFileRepository;
         this.jobRepository = jobRepository;
+        this.jobService = jobService;
         this.objectMapper = objectMapper;
     }
 
@@ -47,7 +50,6 @@ public class CsvService {
         CsvFile csv = new CsvFile();
         csv.setOriginalName(file.getOriginalFilename());
         csv.setContentType(file.getContentType());
-
         try {
             csv.setData(file.getBytes());
         } catch (IOException e) {
@@ -61,55 +63,20 @@ public class CsvService {
         payload.put("delimiter", delim);
         payload.put("hasHeader", header);
 
-        String payloadJson = toJson(payload);
+        CreateJobRequest req = new CreateJobRequest();
+        req.setType(JobType.CSV_PROCESS);
+        req.setPayload(payload);
+        req.setMaxAttempts(maxAtt);
 
-        Job job = new Job();
-        job.setType(JobType.CSV_PROCESS);
-        job.setStatus(JobStatus.QUEUED);
-        job.setPayload(payloadJson);
-
-        job.setAttempts(0);
-        job.setMaxAttempts(maxAtt);
-
-        job.setResult(null);
-        job.setError(null);
-        job.setLockedBy(null);
-        job.setLockedAt(null);
-
-        Job savedJob = jobRepository.save(job);
-
-        CreateJobResponse resp = new CreateJobResponse();
-        resp.setJobId(savedJob.getId());
-        resp.setStatus(savedJob.getStatus());
-        return resp;
+        return jobService.submit(req);
     }
 
     public String getResult(UUID jobId) {
-        Job job = jobRepository.findById(jobId)
-                .orElseThrow(() -> new NoSuchElementException("Job not found: " + jobId));
-
-        if (job.getType() != JobType.CSV_PROCESS) {
-            throw new IllegalArgumentException("Job " + jobId + " is not a CSV processing job");
-        }
-
-        if (job.getStatus() != JobStatus.COMPLETED) {
-            throw new IllegalStateException("Job " + jobId + " is not completed (status: " + job.getStatus() + ")");
-        }
-
-        return job.getResult();
+        return findCompletedCsvJob(jobId).getResult();
     }
 
     public CsvJobSummaryView getSummary(UUID jobId) {
-        Job job = jobRepository.findById(jobId)
-                .orElseThrow(() -> new NoSuchElementException("Job not found: " + jobId));
-
-        if (job.getType() != JobType.CSV_PROCESS) {
-            throw new IllegalArgumentException("Job " + jobId + " is not a CSV processing job");
-        }
-
-        if (job.getStatus() != JobStatus.COMPLETED) {
-            throw new IllegalStateException("Job " + jobId + " is not completed (status: " + job.getStatus() + ")");
-        }
+        Job job = findCompletedCsvJob(jobId);
 
         try {
             JsonNode node = objectMapper.readTree(job.getResult());
@@ -135,11 +102,18 @@ public class CsvService {
         }
     }
 
-    private String toJson(Object obj) {
-        try {
-            return objectMapper.writeValueAsString(obj);
-        } catch (Exception e) {
-            throw new IllegalStateException("Could not convert object to JSON", e);
+    private Job findCompletedCsvJob(UUID jobId) {
+        Job job = jobRepository.findById(jobId)
+                .orElseThrow(() -> new NoSuchElementException("Job not found: " + jobId));
+
+        if (job.getType() != JobType.CSV_PROCESS) {
+            throw new IllegalArgumentException("Job " + jobId + " is not a CSV processing job");
         }
+
+        if (job.getStatus() != JobStatus.COMPLETED) {
+            throw new IllegalStateException("Job " + jobId + " is not completed (status: " + job.getStatus() + ")");
+        }
+
+        return job;
     }
 }
