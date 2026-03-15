@@ -2,6 +2,7 @@ package dev.chriswalden.jobforge.api.controller;
 
 import dev.chriswalden.jobforge.api.service.CsvService;
 import dev.chriswalden.jobforge.core.dto.CreateJobResponse;
+import dev.chriswalden.jobforge.core.dto.CsvJobSummaryView;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -32,6 +33,11 @@ public class CsvController {
             @RequestParam(value = "maxAttempts", required = false) Integer maxAttempts
             ) {
         return csvService.submit(file, delimiter, hasHeader, maxAttempts);
+    }
+
+    @GetMapping(value = "/jobs/{id}/summary")
+    public CsvJobSummaryView getCsvSummary(@PathVariable UUID id) {
+        return csvService.getSummary(id);
     }
 
     @GetMapping(value = "/jobs/{id}/result", produces = MediaType.APPLICATION_JSON_VALUE)
