@@ -7,6 +7,7 @@ import dev.chriswalden.jobforge.core.dto.CreateJobRequest;
 import dev.chriswalden.jobforge.core.dto.CreateJobResponse;
 import dev.chriswalden.jobforge.core.dto.JobView;
 import dev.chriswalden.jobforge.core.mapper.JobMapper;
+import dev.chriswalden.jobforge.api.messaging.JobPublisher;
 import dev.chriswalden.jobforge.api.repository.JobRepository;
 
 import org.slf4j.Logger;
@@ -27,10 +28,12 @@ public class JobService {
 
     private final JobRepository jobRepository;
     private final ObjectMapper objectMapper;
+    private final JobPublisher jobPublisher;
 
-    public JobService(JobRepository jobRepository, ObjectMapper objectMapper) {
+    public JobService(JobRepository jobRepository, ObjectMapper objectMapper, JobPublisher jobPublisher) {
         this.jobRepository = jobRepository;
         this.objectMapper = objectMapper;
+        this.jobPublisher = jobPublisher;
     }
 
     public CreateJobResponse submit(CreateJobRequest req) {
@@ -48,6 +51,7 @@ public class JobService {
 
         Job saved = jobRepository.save(job);
         log.info("[job={}] Created job type={}", saved.getId(), saved.getType());
+        jobPublisher.publish(saved);
 
         CreateJobResponse resp = new CreateJobResponse();
         resp.setJobId(saved.getId());

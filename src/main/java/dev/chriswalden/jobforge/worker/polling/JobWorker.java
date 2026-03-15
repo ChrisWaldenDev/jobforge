@@ -1,44 +1,37 @@
 package dev.chriswalden.jobforge.worker.polling;
 
-import dev.chriswalden.jobforge.core.domain.Job;
-import dev.chriswalden.jobforge.worker.claiming.JobClaimer;
+import dev.chriswalden.jobforge.api.repository.JobRepository;
+import dev.chriswalden.jobforge.config.RabbitMqConfig;
+import dev.chriswalden.jobforge.core.messaging.JobMessage;
 import dev.chriswalden.jobforge.worker.execution.JobExecutor;
+import dev.chriswalden.jobforge.core.domain.Job;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
 
-import java.util.List;
+import java.util.NoSuchElementException;
 
 @Component
 public class JobWorker {
 
     private static final Logger log = LoggerFactory.getLogger(JobWorker.class);
 
-    private final JobClaimer jobClaimer;
+    private final JobRepository jobRepository;
     private final JobExecutor jobExecutor;
 
-    public JobWorker(JobClaimer jobClaimer, JobExecutor jobExecutor) {
-        this.jobClaimer = jobClaimer;
+    public JobWorker(JobRepository jobRepository, JobExecutor jobExecutor) {
+        this.jobRepository = jobRepository;
         this.jobExecutor = jobExecutor;
     }
 
-    @Scheduled(fixedDelayString = "${jobforge.worker.pollDelayMs:1000}")
-    public void pollAndWork() {
-        int limit = 1;
+    @RabbitListener(queues = RabbitMqConfig.QUEUE)
+    public void onMessage(JobMessage message) {
+        log.info("[job={}] Received from RabbitMQ type={}", message.jobId(), message.jobType());
 
-        List<Job> claimed = jobClaimer.claimNext(limit);
+        Job job = jobRepository.findById(message.jobId())
+                .orElseThrow(() -> new NoSuchElementException("Job not found: " + message.jobId()));
 
-        if (claimed.isEmpty()) return;
-
-        log.info("Claimed {} job(s)", claimed.size());
-
-        for (Job job : claimed) {
-            try {
-                jobExecutor.execute(job);
-            } catch (Exception e) {
-                log.error("Unexpected error executing job {}", job.getId(), e);
-            }
-        }
+        jobExecutor.execute(job);
     }
 }
